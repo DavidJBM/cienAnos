@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Buscador 100 Años de Soledad</title>
+  <!-- Materialize CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+  body {
+    margin: 0;
+    padding: 0;
+    position: relative;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('/static/img/fondocienanos.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.45; /* Cambia el valor para más o menos opacidad */
+    z-index: -1;
+  }
+
+    .search-container {
+      margin-top: 50px;
+    }
+
+    .category-btn {
+      margin: 5px;
+    }
+
+    .card-result {
+      margin-bottom: 20px;
+    }
+
+    #results {
+      margin-top: 40px;
+    }
+
+    .title {
+      margin-bottom: 30px;
+      font-weight: 500;
+    }
+
+    .no-results {
+      color: #888;
+      font-style: italic;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body class="container">
+
+  <h4 class="center-align title">Explora Cien Años de Soledad</h4>
+
+  <div class="row search-container">
+    <div class="input-field col s12 m8 offset-m2">
+      <input id="search" type="text" placeholder="Buscar...">
+    </div>
+    <div class="col s12 center-align">
+      <a class="waves-effect waves-light btn category-btn blue lighten-1" data-category="eventos">Eventos</a>
+      <a class="waves-effect waves-light btn category-btn teal lighten-1" data-category="familias">Familias</a>
+      <a class="waves-effect waves-light btn category-btn deep-purple lighten-1" data-category="lugares">Lugares</a>
+      <a class="waves-effect waves-light btn category-btn pink lighten-1" data-category="magia">Magia</a>
+      <a class="waves-effect waves-light btn category-btn amber darken-1" data-category="personajes">Personajes</a>
+    </div>
+  </div>
+
+  <div class="row" id="results">
+    <!-- Resultados dinámicos aquí -->
+  </div>
+
+  <!-- Materialize JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <!-- JS -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const searchInput = document.getElementById('search');
+      const buttons = document.querySelectorAll('.category-btn');
+      const resultsDiv = document.getElementById('results');
+
+      buttons.forEach(button => {
+        button.addEventListener('click', () => {
+          const query = searchInput.value;
+          const category = button.getAttribute('data-category');
+
+          fetch(`/buscar?categoria=${category}&q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+              resultsDiv.innerHTML = '';
+              if (data.resultados.length === 0) {
+                resultsDiv.innerHTML = '<p class="center-align no-results">No se encontraron resultados.</p>';
+              } else {
+                data.resultados.forEach(item => {
+                  const col = document.createElement('div');
+                  col.className = 'col s12 m6 l4';
+
+                  const card = document.createElement('div');
+                  card.className = 'card card-result';
+
+                  const cardContent = document.createElement('div');
+                  cardContent.className = 'card-content';
+
+                  const span = document.createElement('span');
+                  span.className = 'card-title grey-text text-darken-4';
+                  span.textContent = item;
+
+                  cardContent.appendChild(span);
+                  card.appendChild(cardContent);
+                  col.appendChild(card);
+                  resultsDiv.appendChild(col);
+                });
+              }
+            });
+        });
+      });
+    });
+  </script>
+</body>
+</html>
