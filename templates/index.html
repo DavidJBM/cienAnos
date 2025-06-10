@@ -249,6 +249,50 @@
       font-size: 0.9rem;
     }
 
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(243, 240, 230, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .loading-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f0e6;
+      border-top: 5px solid #a67c52;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    .loading-text {
+      font-size: 1.2rem;
+      color: #5d3a00;
+      font-weight: 500;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
     @media (max-width: 768px) {
       h1 {
         font-size: 2rem;
@@ -281,6 +325,12 @@
 </head>
 
 <body>
+  <!-- Loading overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <p class="loading-text">Buscando en Macondo...</p>
+  </div>
+
   <header>
     <h1>Cien Años de Soledad</h1>
     <p class="subtitle">Explora el universo mágico de Macondo</p>
@@ -323,8 +373,19 @@
       const searchInput = document.getElementById('search');
       const buttons = document.querySelectorAll('.category-btn');
       const resultsDiv = document.getElementById('results');
+      const loadingOverlay = document.getElementById('loadingOverlay');
+
+      function showLoading() {
+        loadingOverlay.classList.add('active');
+      }
+
+      function hideLoading() {
+        loadingOverlay.classList.remove('active');
+      }
 
       function renderResults(items, category) {
+        hideLoading();
+        
         resultsDiv.innerHTML = '';
         
         if (!items || items.length === 0) {
@@ -418,10 +479,13 @@
       }
 
       function buscar(categoria, query) {
+        showLoading();
+        
         fetch(`/buscar?categoria=${categoria}&q=${encodeURIComponent(query)}`)
           .then(res => res.json())
           .then(data => renderResults(data.resultados, categoria))
           .catch(() => {
+            hideLoading();
             resultsDiv.innerHTML = `
               <div class="no-results">
                 <i class="fas fa-exclamation-triangle fa-2x" style="margin-bottom: 15px;"></i>
