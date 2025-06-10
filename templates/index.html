@@ -2,15 +2,23 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Buscador - 100 Años de Soledad</title>
+  <title>Buscador - Cien Años de Soledad</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  
   <!-- Materialize CSS -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+  
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond&display=swap" rel="stylesheet">
+
   <style>
     body {
       margin: 0;
       padding: 0;
       min-height: 100vh;
+      font-family: 'EB Garamond', serif;
+      background-color: #f5f1e6;
+      color: #3e2f1c;
     }
 
     body::before {
@@ -24,54 +32,83 @@
       background-size: cover;
       background-repeat: no-repeat;
       background-position: center;
-      opacity: 0.25;
+      opacity: 0.2;
       z-index: -1;
+      filter: sepia(0.5);
+    }
+
+    h4 {
+      margin-top: 40px;
+      font-weight: bold;
+      color: #5d3a00;
     }
 
     .search-container {
-      margin-top: 50px;
+      margin-top: 30px;
+    }
+
+    .input-field input {
+      background-color: #fffaf0;
+      border-radius: 8px;
+      padding-left: 10px;
     }
 
     .category-btn {
       margin: 5px;
+      background-color: #a67c52 !important;
+      color: #fff !important;
+      font-weight: bold;
+    }
+
+    .category-btn:hover {
+      background-color: #815f3b !important;
     }
 
     .card-result {
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      background-color: #fff;
-      margin-bottom: 20px;
+      border-radius: 10px;
+      background: #fdfaf5;
+      border: 1px solid #e0d8c3;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      transition: transform 0.2s ease;
+    }
+
+    .card-result:hover {
+      transform: scale(1.02);
     }
 
     .card-title {
-      font-size: 1.4rem;
+      font-size: 1.6rem;
+      color: #4a300a;
+      margin-bottom: 10px;
     }
 
     .collection-item {
-      font-size: 0.95rem;
+      font-size: 1rem;
+      border-bottom: 1px dashed #c9b79e;
     }
 
     .no-results {
-      color: #888;
+      color: #5f4b32;
       font-style: italic;
       margin-top: 20px;
     }
   </style>
 </head>
+
 <body class="container">
 
-  <h4 class="center-align">Explora Cien Años de Soledad</h4>
+  <h4 class="center-align">Explora el mundo de *Cien Años de Soledad*</h4>
 
   <div class="row search-container">
     <div class="input-field col s12 m8 offset-m2">
-      <input id="search" type="text" placeholder="Buscar por nombre...">
+      <input id="search" type="text" placeholder="Buscar por nombre o palabra clave...">
     </div>
     <div class="col s12 center-align">
-      <a class="waves-effect waves-light btn category-btn blue lighten-1" data-category="eventos">Eventos</a>
-      <a class="waves-effect waves-light btn category-btn teal lighten-1" data-category="familias">Familias</a>
-      <a class="waves-effect waves-light btn category-btn deep-purple lighten-1" data-category="lugares">Lugares</a>
-      <a class="waves-effect waves-light btn category-btn pink lighten-1" data-category="magia">Magia</a>
-      <a class="waves-effect waves-light btn category-btn amber darken-1" data-category="personajes">Personajes</a>
+      <a class="waves-effect waves-light btn category-btn" data-category="eventos">Eventos</a>
+      <a class="waves-effect waves-light btn category-btn" data-category="familias">Familias</a>
+      <a class="waves-effect waves-light btn category-btn" data-category="lugares">Lugares</a>
+      <a class="waves-effect waves-light btn category-btn" data-category="magia">Magia</a>
+      <a class="waves-effect waves-light btn category-btn" data-category="personajes">Personajes</a>
     </div>
   </div>
 
@@ -111,7 +148,7 @@
                   cardContent.className = 'card-content';
 
                   const title = document.createElement('span');
-                  title.className = 'card-title grey-text text-darken-4';
+                  title.className = 'card-title';
                   title.textContent = item.nombre || 'Sin nombre';
 
                   const list = document.createElement('ul');
