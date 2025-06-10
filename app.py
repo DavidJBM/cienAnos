@@ -9,7 +9,6 @@ MONGO_URI = "mongodb+srv://chinopacas:123@prueba.soxywwh.mongodb.net/?retryWrite
 client = MongoClient(MONGO_URI)
 db = client["cien_anos_soledad"]
 
-# Diccionario de colecciones
 colecciones = {
     "eventos": db["eventos"],
     "familias": db["familias"],
@@ -18,7 +17,6 @@ colecciones = {
     "personajes": db["personajes"]
 }
 
-# Función auxiliar para obtener nombre por ID
 def obtener_nombre(coleccion, _id):
     try:
         doc = db[coleccion].find_one({"_id": ObjectId(_id)})
@@ -26,18 +24,15 @@ def obtener_nombre(coleccion, _id):
     except:
         return "Desconocido"
 
-# Función para convertir una lista de IDs a nombres
 def obtener_nombres(coleccion, ids):
+    if not ids or not isinstance(ids, list):
+        return []
     nombres = []
     for _id in ids:
-        try:
-            nombre = obtener_nombre(coleccion, _id)
-            nombres.append(nombre)
-        except:
-            continue
+        nombre = obtener_nombre(coleccion, _id)
+        nombres.append(nombre)
     return nombres if nombres else ["Desconocido"]
 
-# Serializador base
 def serializar_documento(doc):
     doc["_id"] = str(doc["_id"])
     for key in doc:
@@ -54,45 +49,39 @@ def index():
 @app.route("/buscar")
 def buscar():
     categoria = request.args.get("categoria")
-    q = request.args.get("q", "").strip().lower()
-    resultados = []
+    q = request.args.get("q", "").strip()
 
     if categoria not in colecciones:
         return jsonify({"resultados": []})
 
     filtro = {"nombre": {"$regex": q, "$options": "i"}} if q else {}
 
-    for doc in colecciones[categoria].find(filtro):
-        doc["_id"] = str(doc["_id"])
+    resultados = []
 
-        # EVENTOS
+    for doc in colecciones[categoria].find(filtro):
+        doc = serializar_documento(doc)
+
         if categoria == "eventos":
             if "lugar" in doc:
                 doc["lugar"] = obtener_nombre("lugares", doc["lugar"])
             if "personajes_involucrados" in doc:
                 doc["personajes_involucrados"] = obtener_nombres("personajes", doc["personajes_involucrados"])
 
-        # FAMILIAS
         elif categoria == "familias":
             if "parejas" in doc:
                 doc["parejas"] = obtener_nombres("personajes", doc["parejas"])
             if "hijos" in doc:
                 doc["hijos"] = obtener_nombres("personajes", doc["hijos"])
 
-        # MAGIA
         elif categoria == "magia":
             if "personajes_relacionados" in doc:
                 doc["personajes_relacionados"] = obtener_nombres("personajes", doc["personajes_relacionados"])
             if "eventos_relacionados" in doc:
                 doc["eventos_relacionados"] = obtener_nombres("eventos", doc["eventos_relacionados"])
 
-        # LUGARES
         elif categoria == "lugares":
             if "personajes_relacionados" in doc:
                 doc["personajes_relacionados"] = obtener_nombres("personajes", doc["personajes_relacionados"])
-
-        else:
-            doc = serializar_documento(doc)
 
         resultados.append(doc)
 
