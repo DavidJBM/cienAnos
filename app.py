@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 from pymongo import MongoClient
 from bson import ObjectId
+import ast 
 
 app = Flask(__name__)
 
@@ -142,6 +143,36 @@ def editar():
             return jsonify({"success": True})
         else:
             return jsonify({"success": False, "error": "No se actualizó el documento"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/insertar", methods=["POST"])
+def insertar():
+    data = request.get_json()
+    categoria = data.get("categoria")
+    nuevo_doc = data.get("datos", {})
+
+    if categoria not in colecciones or not nuevo_doc:
+        return jsonify({"success": False, "error": "Datos inválidos"}), 400
+
+    # Procesar campos tipo lista (ej. ["id1", "id2"]) y convertir a ObjectId si corresponde
+    for k, v in nuevo_doc.items():
+        # Convertir string tipo lista segura
+        if isinstance(v, str) and v.startswith("[") and v.endswith("]"):
+            try:
+                nuevo_doc[k] = ast.literal_eval(v)
+            except:
+                pass
+
+        # Convertir elementos a ObjectId si son candidatos
+        if isinstance(nuevo_doc[k], list):
+            nuevo_doc[k] = [ObjectId(i) if ObjectId.is_valid(i) else i for i in nuevo_doc[k]]
+        elif isinstance(nuevo_doc[k], str) and ObjectId.is_valid(nuevo_doc[k]):
+            nuevo_doc[k] = ObjectId(nuevo_doc[k])
+
+    try:
+        resultado = colecciones[categoria].insert_one(nuevo_doc)
+        return jsonify({"success": True, "id": str(resultado.inserted_id)})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

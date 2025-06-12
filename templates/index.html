@@ -370,6 +370,87 @@
     .save-btn:hover { background: #2ecc71; }
     #editFields label { display: block; margin-top: 10px; }
     #editFields input { width: 100%; padding: 6px; margin-top: 2px; }
+    .insert-btn {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 20px;
+    margin: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease, transform 0.2s ease;
+  }
+
+  .insert-btn:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+  }
+
+  .insert-btn:active {
+    transform: scale(0.98);
+  }
+
+  .button-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  .modal-content.insert-modal {
+    background-color: #fffaf3;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 90%;
+    margin: 5% auto;
+    padding: 30px;
+    position: relative;
+    border: 2px solid var(--border-color);
+    font-family: 'EB Garamond', serif;
+  }
+
+  .modal-form label {
+    font-weight: 600;
+    color: var(--primary-color);
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 6px;
+  }
+
+  .modal-form input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #d3b27f;
+    border-radius: 10px;
+    background-color: #fff;
+    font-size: 1rem;
+    font-family: 'EB Garamond', serif;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+  }
+
+  .modal .close {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 24px;
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: color 0.3s;
+  }
+
+  .modal .close:hover {
+    color: #c0392b;
+  }
   </style>
 </head>
 
@@ -411,6 +492,15 @@
     </div>
   </div>
 
+  <div class="button-container">
+    <button class="insert-btn" onclick="abrirModalInsertar('personajes')">➕ Insertar Personaje</button>
+    <button class="insert-btn" onclick="abrirModalInsertar('eventos')">➕ Insertar Evento</button>
+    <button class="insert-btn" onclick="abrirModalInsertar('lugares')">➕ Insertar Lugar</button>
+    <button class="insert-btn" onclick="abrirModalInsertar('magia')">➕ Insertar Magia</button>
+    <button class="insert-btn" onclick="abrirModalInsertar('familias')">➕ Insertar Familia</button>
+  </div>
+
+
   <div id="results" aria-live="polite" aria-atomic="true"></div>
 
   <footer>
@@ -429,6 +519,21 @@
       </form>
     </div>
   </div>
+
+ <!-- Modal para insertar mejorado -->
+<div id="modalInsertar" class="modal" style="display:none;">
+  <div class="modal-content insert-modal">
+    <span class="close" onclick="cerrarModalInsertar()">&times;</span>
+    <h2 id="tituloModalInsertar">Insertar nuevo documento</h2>
+    <form id="formularioInsertar" class="modal-form">
+      <!-- Campos generados dinámicamente -->
+    </form>
+    <div class="modal-actions">
+      <button type="button" class="save-btn" onclick="enviarInsertar()">Guardar</button>
+      <button type="button" class="delete-btn" onclick="cerrarModalInsertar()">Cancelar</button>
+    </div>
+  </div>
+</div>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -679,6 +784,75 @@ function abrirModalEditar(item, categoria, card) {
     const modal = document.getElementById('editModal');
     if (event.target == modal) modal.style.display = 'none';
   };
+}
+
+let categoriaActual = '';
+
+const camposPorCategoria = {
+  personajes: ["nombre", "genero", "generacion", "importancia"],
+  eventos: ["nombre", "lugar", "acontecimientos", "importancia"],
+  lugares: ["nombre", "ubicacion", "personajes_relacionados"],
+  magia: ["nombre", "tipo", "significado", "descripcion", "efecto"],
+  familias: ["nombre", "parejas", "hijos"]
+};
+
+function abrirModalInsertar(categoria) {
+  categoriaActual = categoria;
+
+  // Cambia el título
+  document.getElementById('tituloModalInsertar').innerText = `Insertar en ${categoria}`;
+
+  // Limpia el formulario anterior
+  const formulario = document.getElementById('formularioInsertar');
+  formulario.innerHTML = '';
+
+  // Genera campos dinámicamente
+  const campos = camposPorCategoria[categoria] || [];
+  for (const campo of campos) {
+    formulario.innerHTML += `
+      <label for="${campo}">${campo}</label><br>
+      <input type="text" name="${campo}" id="${campo}" placeholder="Ej: texto o [\"id1\", \"id2\"]"><br><br>
+    `;
+  }
+
+  // Muestra el modal
+  document.getElementById('modalInsertar').style.display = 'block';
+}
+
+function cerrarModalInsertar() {
+  document.getElementById('modalInsertar').style.display = 'none';
+}
+
+function enviarInsertar() {
+  const form = document.getElementById('formularioInsertar');
+  const formData = new FormData(form);
+  const datos = {};
+
+  for (const [key, value] of formData.entries()) {
+    datos[key] = value;
+  }
+
+  fetch('/insertar', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      categoria: categoriaActual,
+      datos: datos
+    })
+  })
+  .then(res => res.json())
+  .then(res => {
+    if (res.success) {
+      alert('Insertado correctamente');
+      cerrarModalInsertar();
+      location.reload();
+    } else {
+      alert('Error: ' + res.error);
+    }
+  })
+  .catch(err => alert('Error en la solicitud: ' + err));
 }
   </script>
 </body>
