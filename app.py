@@ -97,5 +97,53 @@ def buscar():
 
     return jsonify({"resultados": resultados})
 
+@app.route("/eliminar", methods=["POST"])
+def eliminar():
+    data = request.get_json()
+    categoria = data.get("categoria")
+    doc_id = data.get("id")
+
+    if categoria not in colecciones or not doc_id:
+        return jsonify({"success": False, "error": "Datos inválidos"}), 400
+
+    try:
+        result = colecciones[categoria].delete_one({"_id": ObjectId(doc_id)})
+        if result.deleted_count == 1:
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "No se encontró el documento"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/editar", methods=["POST"])
+def editar():
+    data = request.get_json()
+    categoria = data.get("categoria")
+    doc_id = data.get("id")
+    nuevos_datos = data.get("datos", {})
+
+    if categoria not in colecciones or not doc_id or not nuevos_datos:
+        return jsonify({"success": False, "error": "Datos inválidos"}), 400
+
+    # Convierte listas de strings a listas si es necesario
+    for k, v in nuevos_datos.items():
+        if isinstance(v, str) and v.startswith("[") and v.endswith("]"):
+            try:
+                nuevos_datos[k] = eval(v)
+            except:
+                pass
+
+    try:
+        result = colecciones[categoria].update_one(
+            {"_id": ObjectId(doc_id)},
+            {"$set": nuevos_datos}
+        )
+        if result.modified_count == 1:
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "No se actualizó el documento"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(debug=True)
