@@ -649,11 +649,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Define los campos por categoría (ajusta según tus modelos)
   const camposPorCategoria = {
-    personajes: ['nombre', 'descripcion', 'familia', 'relaciones'],
-    familias: ['nombre', 'parejas', 'hijos'],
-    lugares: ['nombre', 'descripcion', 'personajes_relacionados'],
-    eventos: ['nombre', 'descripcion', 'lugar', 'personajes_involucrados'],
-    magia: ['nombre', 'descripcion', 'personajes_relacionados', 'eventos_relacionados']
+    personajes: [
+      { name: 'nombre', label: 'Nombre', type: 'text' },
+      { name: 'genero', label: 'Género', type: 'text' },
+      { name: 'generacion', label: 'Generación', type: 'number' },
+      { name: 'importancia', label: 'Nivel de Importancia', type: 'text' }
+    ],
+    familias: [
+      { name: 'nombre', label: 'Nombre', type: 'text' },
+      { name: 'parejas', label: 'Parejas (separadas por coma)', type: 'text' },
+      { name: 'hijos', label: 'Hijos (separados por coma)', type: 'text' }
+    ],
+    lugares: [
+      { name: 'nombre', label: 'Nombre', type: 'text' },
+      { name: 'descripcion', label: 'Descripción', type: 'textarea' },
+      { name: 'personajes_relacionados', label: 'Personajes Relacionados (separados por coma)', type: 'text' }
+    ],
+    eventos: [
+      { name: 'nombre', label: 'Nombre', type: 'text' },
+      { name: 'descripcion', label: 'Descripción', type: 'textarea' },
+      { name: 'lugar', label: 'Lugar', type: 'text' },
+      { name: 'personajes_involucrados', label: 'Personajes Involucrados (separados por coma)', type: 'text' }
+    ],
+    magia: [
+      { name: 'nombre', label: 'Nombre', type: 'text' },
+      { name: 'descripcion', label: 'Descripción', type: 'textarea' },
+      { name: 'personajes_relacionados', label: 'Personajes Relacionados (separados por coma)', type: 'text' },
+      { name: 'eventos_relacionados', label: 'Eventos Relacionados (separados por coma)', type: 'text' }
+    ]
   };
 
   function getCategoriaActual() {
@@ -666,10 +689,11 @@ document.addEventListener('DOMContentLoaded', () => {
     insertFields.innerHTML = '';
     (camposPorCategoria[categoria] || ['nombre']).forEach(campo => {
       const label = document.createElement('label');
-      label.textContent = campo;
+      label.textContent = campo.label;
       const input = document.createElement('input');
-      input.name = campo;
-      input.placeholder = campo + (campo === 'nombre' ? ' *' : '');
+      input.name = campo.name;
+      input.placeholder = campo.label + (campo.name === 'nombre' ? ' *' : '');
+      input.type = campo.type;
       insertFields.appendChild(label);
       insertFields.appendChild(input);
     });
