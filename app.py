@@ -145,5 +145,30 @@ def editar():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route("/insertar", methods=["POST"])
+def insertar():
+    data = request.get_json()
+    categoria = data.get("categoria")
+    nuevos_datos = data.get("datos", {})
+
+    if categoria not in colecciones or not nuevos_datos:
+        return jsonify({"success": False, "error": "Datos inválidos"}), 400
+
+    # Limpieza: convierte listas de strings si es necesario
+    for k, v in nuevos_datos.items():
+        if isinstance(v, list):
+            nuevos_datos[k] = [i for i in v if i]
+        elif isinstance(v, str) and ',' in v:
+            nuevos_datos[k] = [i.strip() for i in v.split(',') if i.strip()]
+
+    try:
+        result = colecciones[categoria].insert_one(nuevos_datos)
+        if result.inserted_id:
+            return jsonify({"success": True, "id": str(result.inserted_id)})
+        else:
+            return jsonify({"success": False, "error": "No se pudo insertar"}), 500
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(debug=True)

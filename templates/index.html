@@ -370,6 +370,22 @@
     .save-btn:hover { background: #2ecc71; }
     #editFields label { display: block; margin-top: 10px; }
     #editFields input { width: 100%; padding: 6px; margin-top: 2px; }
+
+    .insert-btn {
+      background: #27ae60;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 22px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+      transition: background 0.2s;
+    }
+    .insert-btn:hover {
+      background: #2ecc71;
+    }
   </style>
 </head>
 
@@ -413,6 +429,12 @@
 
   <div id="results" aria-live="polite" aria-atomic="true"></div>
 
+  <div class="insert-container" style="text-align:center; margin: 20px 0;">
+    <button id="insertBtn" class="insert-btn">
+      <i class="fas fa-plus"></i> Insertar nuevo
+    </button>
+  </div>
+
   <footer>
     <p>Explorador interactivo de la obra de Gabriel García Márquez</p>
   </footer>
@@ -430,256 +452,333 @@
     </div>
   </div>
 
+  <!-- Modal para insertar -->
+  <div id="insertModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <span id="closeInsertModal" class="close">&times;</span>
+      <h2>Insertar nuevo elemento</h2>
+      <form id="insertForm">
+        <div id="insertFields"></div>
+        <button type="submit" class="save-btn">Guardar</button>
+      </form>
+    </div>
+  </div>
+
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const searchInput = document.getElementById('search');
-      const buttons = document.querySelectorAll('.category-btn');
-      const resultsDiv = document.getElementById('results');
-      const loadingOverlay = document.getElementById('loadingOverlay');
+document.addEventListener('DOMContentLoaded', () => {
+  const searchInput = document.getElementById('search');
+  const buttons = document.querySelectorAll('.category-btn');
+  const resultsDiv = document.getElementById('results');
+  const loadingOverlay = document.getElementById('loadingOverlay');
 
-      function showLoading() {
-        loadingOverlay.classList.add('active');
-      }
-
-      function hideLoading() {
-        loadingOverlay.classList.remove('active');
-      }
-
-      function renderResults(items, category) {
-        hideLoading();
-        
-        resultsDiv.innerHTML = '';
-        
-        if (!items || items.length === 0) {
-          resultsDiv.innerHTML = `
-            <div class="no-results">
-              <i class="fas fa-book-open fa-2x" style="margin-bottom: 15px;"></i>
-              <p>No se encontraron resultados</p>
-            </div>`;
-          return;
-        }
-
-        items.forEach(item => {
-          const card = document.createElement('article');
-          card.className = 'card-result';
-          card.setAttribute('aria-label', `Detalles de ${item.nombre || 'elemento sin nombre'}`);
-
-          const cardHeader = document.createElement('div');
-          cardHeader.className = 'card-header';
-
-          const title = document.createElement('h2');
-          title.className = 'card-title';
-          title.textContent = item.nombre || 'Sin nombre';
-          
-          const categoryLabel = document.createElement('p');
-          categoryLabel.className = 'card-category';
-          categoryLabel.textContent = getCategoryName(category);
-
-          cardHeader.appendChild(title);
-          cardHeader.appendChild(categoryLabel);
-
-          const list = document.createElement('ul');
-          list.className = 'properties-list';
-
-          Object.entries(item).forEach(([key, value]) => {
-            if (['_id', 'nombre'].includes(key)) return;
-
-            const li = document.createElement('li');
-            li.className = 'property-item';
-
-            const keySpan = document.createElement('span');
-            keySpan.className = 'property-key';
-            keySpan.textContent = formatKey(key);
-
-            const valueDiv = document.createElement('div');
-            valueDiv.className = 'property-value';
-            
-            if (Array.isArray(value)) {
-              valueDiv.className = 'property-value-array';
-              if (value.length === 0) {
-                const emptySpan = document.createElement('span');
-                emptySpan.textContent = 'Ninguno';
-                valueDiv.appendChild(emptySpan);
-              } else {
-                value.forEach(val => {
-                  const itemSpan = document.createElement('span');
-                  itemSpan.className = 'array-item';
-                  itemSpan.textContent = val;
-                  valueDiv.appendChild(itemSpan);
-                });
-              }
-            } else {
-              valueDiv.textContent = value || 'No especificado';
-            }
-
-            li.appendChild(keySpan);
-            li.appendChild(valueDiv);
-            list.appendChild(li);
-          });
-
-          // Botón Eliminar para cada tarjeta
-          const deleteButton = document.createElement('button');
-          deleteButton.className = 'delete-btn';
-          deleteButton.textContent = 'Eliminar';
-          deleteButton.onclick = () => eliminarTarjeta(item._id, category, card);
-
-          // Botón Editar para cada tarjeta
-          const editButton = document.createElement('button');
-          editButton.className = 'edit-btn';
-          editButton.textContent = 'Editar';
-          editButton.onclick = () => abrirModalEditar(item, category, card);
-
-          card.appendChild(cardHeader);
-          card.appendChild(list);
-          card.appendChild(editButton);
-          card.appendChild(deleteButton);
-          resultsDiv.appendChild(card);
-        });
-      }
-
-      function formatKey(key) {
-        return key.split('_').map(word => 
-          word.charAt(0).toUpperCase() + word.slice(1)
-        ).join(' ');
-      }
-
-      function getCategoryName(category) {
-        const names = {
-          'personajes': 'Personaje',
-          'familias': 'Familia',
-          'lugares': 'Lugar',
-          'eventos': 'Evento',
-          'magia': 'Elemento Mágico'
-        };
-        return names[category] || 'Elemento';
-      }
-
-      function buscar(categoria, query) {
-        showLoading();
-
-        fetch(`/buscar?categoria=${categoria}&q=${encodeURIComponent(query)}`)
-          .then(res => res.json())
-          .then(data => renderResults(data.resultados, categoria))
-          .catch(() => {
-            hideLoading();
-            resultsDiv.innerHTML = `
-              <div class="no-results">
-                <i class="fas fa-exclamation-triangle fa-2x" style="margin-bottom: 15px;"></i>
-                <p>Error al cargar los resultados</p>
-              </div>`;
-          });
-      }
-
-      function setActiveCategory(button) {
-        buttons.forEach(b => {
-          b.classList.remove('active');
-          b.setAttribute('aria-pressed', 'false');
-        });
-        button.classList.add('active');
-        button.setAttribute('aria-pressed', 'true');
-      }
-
-      buttons.forEach(button => {
-        button.addEventListener('click', () => {
-          setActiveCategory(button);
-          const categoria = button.getAttribute('data-category');
-          buscar(categoria, searchInput.value.trim());
-        });
-      });
-
-      searchInput.addEventListener('keyup', (e) => {
-        if (e.key === 'Enter') {
-          const activeButton = document.querySelector('.category-btn.active');
-          const categoria = activeButton ? activeButton.getAttribute('data-category') : 'personajes';
-          buscar(categoria, searchInput.value.trim());
-        }
-      });
-
-      // Debounce para búsqueda mientras se escribe
-      let searchTimeout;
-      searchInput.addEventListener('input', () => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-          const activeButton = document.querySelector('.category-btn.active');
-          const categoria = activeButton ? activeButton.getAttribute('data-category') : 'personajes';
-          buscar(categoria, searchInput.value.trim());
-        }, 500);
-      });
-
-      // Buscar por defecto categoría personajes al cargar
-      buscar('personajes', '');
-    });
-
-    function eliminarTarjeta(id, categoria, btn) {
-  if (!confirm("¿Seguro que deseas eliminar este elemento?")) return;
-  btn.disabled = true;
-  fetch('/eliminar', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ id: id, categoria: categoria })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      // Elimina la tarjeta del DOM
-      btn.closest('.card-result').remove();
-    } else {
-      alert("No se pudo eliminar: " + (data.error || "Error desconocido"));
-      btn.disabled = false;
-    }
-  })
-  .catch(() => {
-    alert("Error de red al eliminar.");
-    btn.disabled = false;
-  });
-}
-
-function abrirModalEditar(item, categoria, card) {
-  const modal = document.getElementById('editModal');
-  const fieldsDiv = document.getElementById('editFields');
-  fieldsDiv.innerHTML = '';
-  for (const [key, value] of Object.entries(item)) {
-    if (key === '_id') continue;
-    const label = document.createElement('label');
-    label.textContent = key;
-    const input = document.createElement('input');
-    input.name = key;
-    input.value = Array.isArray(value) ? value.join(', ') : value;
-    fieldsDiv.appendChild(label);
-    fieldsDiv.appendChild(input);
+  function showLoading() {
+    loadingOverlay.classList.add('active');
   }
-  modal.style.display = 'block';
 
-  document.getElementById('editForm').onsubmit = function(e) {
+  function hideLoading() {
+    loadingOverlay.classList.remove('active');
+  }
+
+  function renderResults(items, category) {
+    hideLoading();
+    resultsDiv.innerHTML = '';
+    if (!items || items.length === 0) {
+      resultsDiv.innerHTML = `
+        <div class="no-results">
+          <i class="fas fa-book-open fa-2x" style="margin-bottom: 15px;"></i>
+          <p>No se encontraron resultados</p>
+        </div>`;
+      return;
+    }
+
+    items.forEach(item => {
+      const card = document.createElement('article');
+      card.className = 'card-result';
+      card.setAttribute('aria-label', `Detalles de ${item.nombre || 'elemento sin nombre'}`);
+
+      const cardHeader = document.createElement('div');
+      cardHeader.className = 'card-header';
+
+      const title = document.createElement('h2');
+      title.className = 'card-title';
+      title.textContent = item.nombre || 'Sin nombre';
+      
+      const categoryLabel = document.createElement('p');
+      categoryLabel.className = 'card-category';
+      categoryLabel.textContent = getCategoryName(category);
+
+      cardHeader.appendChild(title);
+      cardHeader.appendChild(categoryLabel);
+
+      const list = document.createElement('ul');
+      list.className = 'properties-list';
+
+      Object.entries(item).forEach(([key, value]) => {
+        if (['_id', 'nombre'].includes(key)) return;
+
+        const li = document.createElement('li');
+        li.className = 'property-item';
+
+        const keySpan = document.createElement('span');
+        keySpan.className = 'property-key';
+        keySpan.textContent = formatKey(key);
+
+        const valueDiv = document.createElement('div');
+        valueDiv.className = 'property-value';
+        
+        if (Array.isArray(value)) {
+          valueDiv.className = 'property-value-array';
+          if (value.length === 0) {
+            const emptySpan = document.createElement('span');
+            emptySpan.textContent = 'Ninguno';
+            valueDiv.appendChild(emptySpan);
+          } else {
+            value.forEach(val => {
+              const itemSpan = document.createElement('span');
+              itemSpan.className = 'array-item';
+              itemSpan.textContent = val;
+              valueDiv.appendChild(itemSpan);
+            });
+          }
+        } else {
+          valueDiv.textContent = value || 'No especificado';
+        }
+
+        li.appendChild(keySpan);
+        li.appendChild(valueDiv);
+        list.appendChild(li);
+      });
+
+      // Botón Eliminar para cada tarjeta
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'delete-btn';
+      deleteButton.textContent = 'Eliminar';
+      deleteButton.onclick = () => eliminarTarjeta(item._id, category, card);
+
+      // Botón Editar para cada tarjeta
+      const editButton = document.createElement('button');
+      editButton.className = 'edit-btn';
+      editButton.textContent = 'Editar';
+      editButton.onclick = () => abrirModalEditar(item, category, card);
+
+      card.appendChild(cardHeader);
+      card.appendChild(list);
+      card.appendChild(editButton);
+      card.appendChild(deleteButton);
+      resultsDiv.appendChild(card);
+    });
+  }
+
+  function formatKey(key) {
+    return key.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+  }
+
+  function getCategoryName(category) {
+    const names = {
+      'personajes': 'Personaje',
+      'familias': 'Familia',
+      'lugares': 'Lugar',
+      'eventos': 'Evento',
+      'magia': 'Elemento Mágico'
+    };
+    return names[category] || 'Elemento';
+  }
+
+  function buscar(categoria, query) {
+    showLoading();
+    fetch(`/buscar?categoria=${categoria}&q=${encodeURIComponent(query)}`)
+      .then(res => res.json())
+      .then(data => renderResults(data.resultados, categoria))
+      .catch(() => {
+        hideLoading();
+        resultsDiv.innerHTML = `
+          <div class="no-results">
+            <i class="fas fa-exclamation-triangle fa-2x" style="margin-bottom: 15px;"></i>
+            <p>Error al cargar los resultados</p>
+          </div>`;
+      });
+  }
+
+  function setActiveCategory(button) {
+    buttons.forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-pressed', 'false');
+    });
+    button.classList.add('active');
+    button.setAttribute('aria-pressed', 'true');
+  }
+
+  buttons.forEach(button => {
+    button.addEventListener('click', () => {
+      setActiveCategory(button);
+      const categoria = button.getAttribute('data-category');
+      buscar(categoria, searchInput.value.trim());
+    });
+  });
+
+  searchInput.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') {
+      const activeButton = document.querySelector('.category-btn.active');
+      const categoria = activeButton ? activeButton.getAttribute('data-category') : 'personajes';
+      buscar(categoria, searchInput.value.trim());
+    }
+  });
+
+  // Debounce para búsqueda mientras se escribe
+  let searchTimeout;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      const activeButton = document.querySelector('.category-btn.active');
+      const categoria = activeButton ? activeButton.getAttribute('data-category') : 'personajes';
+      buscar(categoria, searchInput.value.trim());
+    }, 500);
+  });
+
+  // Buscar por defecto categoría personajes al cargar
+  buscar('personajes', '');
+
+  // --- INSERCIÓN DE NUEVO ELEMENTO ---
+  const insertBtn = document.getElementById('insertBtn');
+  const insertModal = document.getElementById('insertModal');
+  const closeInsertModal = document.getElementById('closeInsertModal');
+  const insertFields = document.getElementById('insertFields');
+  const insertForm = document.getElementById('insertForm');
+
+  // Define los campos por categoría (ajusta según tus modelos)
+  const camposPorCategoria = {
+    personajes: ['nombre', 'descripcion', 'familia', 'relaciones'],
+    familias: ['nombre', 'parejas', 'hijos'],
+    lugares: ['nombre', 'descripcion', 'personajes_relacionados'],
+    eventos: ['nombre', 'descripcion', 'lugar', 'personajes_involucrados'],
+    magia: ['nombre', 'descripcion', 'personajes_relacionados', 'eventos_relacionados']
+  };
+
+  function getCategoriaActual() {
+    const activeBtn = document.querySelector('.category-btn.active');
+    return activeBtn ? activeBtn.getAttribute('data-category') : 'personajes';
+  }
+
+  insertBtn.onclick = () => {
+    const categoria = getCategoriaActual();
+    insertFields.innerHTML = '';
+    (camposPorCategoria[categoria] || ['nombre']).forEach(campo => {
+      const label = document.createElement('label');
+      label.textContent = campo;
+      const input = document.createElement('input');
+      input.name = campo;
+      input.placeholder = campo + (campo === 'nombre' ? ' *' : '');
+      insertFields.appendChild(label);
+      insertFields.appendChild(input);
+    });
+    insertModal.style.display = 'block';
+  };
+
+  closeInsertModal.onclick = () => insertModal.style.display = 'none';
+  window.addEventListener('click', (event) => {
+    if (event.target == insertModal) insertModal.style.display = 'none';
+  });
+
+  insertForm.onsubmit = function(e) {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const categoria = getCategoriaActual();
+    const formData = new FormData(insertForm);
     const datos = {};
     for (const [k, v] of formData.entries()) {
       datos[k] = v.includes(',') ? v.split(',').map(s => s.trim()) : v;
     }
-    fetch('/editar', {
+    fetch('/insertar', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ id: item._id, categoria: categoria, datos: datos })
+      body: JSON.stringify({ categoria: categoria, datos: datos })
     })
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        alert('Elemento actualizado');
-        modal.style.display = 'none';
-        // Opcional: recargar resultados
+        alert('Elemento insertado');
+        insertModal.style.display = 'none';
         buscar(categoria, document.getElementById('search').value.trim());
+        insertForm.reset();
       } else {
-        alert('Error al actualizar: ' + (data.error || 'Error desconocido'));
+        alert('Error al insertar: ' + (data.error || 'Error desconocido'));
       }
     });
   };
-  document.getElementById('closeModal').onclick = () => modal.style.display = 'none';
-  window.onclick = function(event) {
+
+  // Eliminar tarjeta
+  window.eliminarTarjeta = function(id, categoria, btn) {
+    if (!confirm("¿Seguro que deseas eliminar este elemento?")) return;
+    btn.disabled = true;
+    fetch('/eliminar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ id: id, categoria: categoria })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        // Elimina la tarjeta del DOM
+        btn.closest('.card-result').remove();
+      } else {
+        alert("No se pudo eliminar: " + (data.error || "Error desconocido"));
+        btn.disabled = false;
+      }
+    })
+    .catch(() => {
+      alert("Error de red al eliminar.");
+      btn.disabled = false;
+    });
+  }
+
+  // Editar tarjeta
+  window.abrirModalEditar = function(item, categoria, card) {
     const modal = document.getElementById('editModal');
-    if (event.target == modal) modal.style.display = 'none';
-  };
-}
+    const fieldsDiv = document.getElementById('editFields');
+    fieldsDiv.innerHTML = '';
+    for (const [key, value] of Object.entries(item)) {
+      if (key === '_id') continue;
+      const label = document.createElement('label');
+      label.textContent = key;
+      const input = document.createElement('input');
+      input.name = key;
+      input.value = Array.isArray(value) ? value.join(', ') : value;
+      fieldsDiv.appendChild(label);
+      fieldsDiv.appendChild(input);
+    }
+    modal.style.display = 'block';
+
+    document.getElementById('editForm').onsubmit = function(e) {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const datos = {};
+      for (const [k, v] of formData.entries()) {
+        datos[k] = v.includes(',') ? v.split(',').map(s => s.trim()) : v;
+      }
+      fetch('/editar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id: item._id, categoria: categoria, datos: datos })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('Elemento actualizado');
+          modal.style.display = 'none';
+          buscar(categoria, document.getElementById('search').value.trim());
+        } else {
+          alert('Error al actualizar: ' + (data.error || 'Error desconocido'));
+        }
+      });
+    };
+    document.getElementById('closeModal').onclick = () => modal.style.display = 'none';
+    window.onclick = function(event) {
+      const modal = document.getElementById('editModal');
+      if (event.target == modal) modal.style.display = 'none';
+    };
+  }
+});
   </script>
 </body>
 </html>
