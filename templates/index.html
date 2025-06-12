@@ -321,6 +321,55 @@
         gap: 20px;
       }
     }
+
+    .delete-btn {
+      background: #c0392b;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 10px;
+      transition: background 0.2s;
+    }
+    .delete-btn:hover {
+      background: #e74c3c;
+    }
+
+    .edit-btn {
+      background: #2980b9;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 10px;
+      margin-right: 10px;
+      transition: background 0.2s;
+      display: inline-block;
+    }
+    .edit-btn:hover {
+      background: #3498db;
+    }
+
+    .modal {
+      position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+      overflow: auto; background: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+      background: #fff; margin: 10% auto; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px;
+    }
+    .close {
+      float: right; font-size: 28px; font-weight: bold; cursor: pointer;
+    }
+    .save-btn {
+      background: #27ae60; color: #fff; border: none; border-radius: 8px; padding: 8px 16px; cursor: pointer; font-weight: 600; margin-top: 10px;
+    }
+    .save-btn:hover { background: #2ecc71; }
+    #editFields label { display: block; margin-top: 10px; }
+    #editFields input { width: 100%; padding: 6px; margin-top: 2px; }
   </style>
 </head>
 
@@ -367,6 +416,19 @@
   <footer>
     <p>Explorador interactivo de la obra de Gabriel García Márquez</p>
   </footer>
+
+  <!-- Modal para editar -->
+  <div id="editModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <span id="closeModal" class="close">&times;</span>
+      <h2>Editar elemento</h2>
+      <form id="editForm">
+        <!-- Campos dinámicos aquí -->
+        <div id="editFields"></div>
+        <button type="submit" class="save-btn">Guardar</button>
+      </form>
+    </div>
+  </div>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -455,8 +517,22 @@
             list.appendChild(li);
           });
 
+          // Botón Eliminar para cada tarjeta
+          const deleteButton = document.createElement('button');
+          deleteButton.className = 'delete-btn';
+          deleteButton.textContent = 'Eliminar';
+          deleteButton.onclick = () => eliminarTarjeta(item._id, category, card);
+
+          // Botón Editar para cada tarjeta
+          const editButton = document.createElement('button');
+          editButton.className = 'edit-btn';
+          editButton.textContent = 'Editar';
+          editButton.onclick = () => abrirModalEditar(item, category, card);
+
           card.appendChild(cardHeader);
           card.appendChild(list);
+          card.appendChild(editButton);
+          card.appendChild(deleteButton);
           resultsDiv.appendChild(card);
         });
       }
@@ -480,7 +556,7 @@
 
       function buscar(categoria, query) {
         showLoading();
-        
+
         fetch(`/buscar?categoria=${categoria}&q=${encodeURIComponent(query)}`)
           .then(res => res.json())
           .then(data => renderResults(data.resultados, categoria))
@@ -533,6 +609,77 @@
       // Buscar por defecto categoría personajes al cargar
       buscar('personajes', '');
     });
+
+    function eliminarTarjeta(id, categoria, btn) {
+  if (!confirm("¿Seguro que deseas eliminar este elemento?")) return;
+  btn.disabled = true;
+  fetch('/eliminar', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ id: id, categoria: categoria })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      // Elimina la tarjeta del DOM
+      btn.closest('.card-result').remove();
+    } else {
+      alert("No se pudo eliminar: " + (data.error || "Error desconocido"));
+      btn.disabled = false;
+    }
+  })
+  .catch(() => {
+    alert("Error de red al eliminar.");
+    btn.disabled = false;
+  });
+}
+
+function abrirModalEditar(item, categoria, card) {
+  const modal = document.getElementById('editModal');
+  const fieldsDiv = document.getElementById('editFields');
+  fieldsDiv.innerHTML = '';
+  for (const [key, value] of Object.entries(item)) {
+    if (key === '_id') continue;
+    const label = document.createElement('label');
+    label.textContent = key;
+    const input = document.createElement('input');
+    input.name = key;
+    input.value = Array.isArray(value) ? value.join(', ') : value;
+    fieldsDiv.appendChild(label);
+    fieldsDiv.appendChild(input);
+  }
+  modal.style.display = 'block';
+
+  document.getElementById('editForm').onsubmit = function(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const datos = {};
+    for (const [k, v] of formData.entries()) {
+      datos[k] = v.includes(',') ? v.split(',').map(s => s.trim()) : v;
+    }
+    fetch('/editar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ id: item._id, categoria: categoria, datos: datos })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('Elemento actualizado');
+        modal.style.display = 'none';
+        // Opcional: recargar resultados
+        buscar(categoria, document.getElementById('search').value.trim());
+      } else {
+        alert('Error al actualizar: ' + (data.error || 'Error desconocido'));
+      }
+    });
+  };
+  document.getElementById('closeModal').onclick = () => modal.style.display = 'none';
+  window.onclick = function(event) {
+    const modal = document.getElementById('editModal');
+    if (event.target == modal) modal.style.display = 'none';
+  };
+}
   </script>
 </body>
 </html>
