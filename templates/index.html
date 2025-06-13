@@ -772,7 +772,7 @@ function abrirModalEditar(item, categoria, card) {
       if (data.success) {
         alert('Elemento actualizado');
         modal.style.display = 'none';
-        // Opcional: recargar resultados
+        
         buscar(categoria, document.getElementById('search').value.trim());
       } else {
         alert('Error al actualizar: ' + (data.error || 'Error desconocido'));
