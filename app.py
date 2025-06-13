@@ -2,6 +2,7 @@
 # IMPORTACIÓN DE MÓDULOS
 # ======================
 from flask import Flask, render_template, request, jsonify
+import re
 from pymongo import MongoClient
 from bson import ObjectId
 import ast 
@@ -98,55 +99,87 @@ def index():
 @app.route("/buscar")
 def buscar():
     """
-    Maneja búsquedas en las colecciones resolviendo relaciones.
-    
-    Parámetros de Consulta:
-        - categoria: Colección objetivo
-        - q: Término de búsqueda
-    
-    Retorna:
-        JSON: Lista de documentos con relaciones resueltas
+    ENDPOINT DE BÚSQUEDA AVANZADA
+    ------------------------------
+    Realiza búsquedas en las colecciones con capacidad para:
+    - Búsqueda simple por nombre
+    - Filtros especiales por capítulo, generación o importancia
+    - Resolución automática de relaciones entre documentos
     """
-    categoria = request.args.get("categoria")
-    consulta = request.args.get("q", "").strip().lower()
-    resultados = []
-
-    if categoria not in colecciones:
-        return jsonify({"resultados": []})
-
-    filtro = {"nombre": {"$regex": consulta, "$options": "i"}} if consulta else {}
     
+    # Obtener parámetros de la URL
+    categoria = request.args.get("categoria")  # Nombre de la colección a buscar
+    consulta = request.args.get("q", "").strip().lower()  # Término de búsqueda (normalizado a minúsculas)
+    resultados = []  # Lista para almacenar los resultados
+
+    # Validar que la categoría exista
+    if categoria not in colecciones:
+        return jsonify({"resultados": []})  # Retorna lista vacía si la categoría no existe
+
+    # Preparar filtro de búsqueda
+    filtro = {}
+
+    # --- SECCIÓN DE INTERPRETACIÓN DE LA CONSULTA ---
+    if consulta:
+        # 1. Búsqueda por capítulo 
+        if re.search(r'cap[íi]tulo\s*(\d+)', consulta):
+            cap = re.search(r'cap[íi]tulo\s*(\d+)', consulta).group(1)
+            filtro["capitulo"] = int(cap)  # Convertir a número entero
+            
+        # 2. Búsqueda por generación 
+        elif re.search(r'generaci[oó]n\s*(\d+)', consulta):
+            gen = re.search(r'generaci[oó]n\s*(\d+)', consulta).group(1)
+            filtro["generacion"] = gen
+            
+        # 3. Búsqueda por importancia (alta/media/baja)
+        elif re.search(r'importancia\s*(alta|media|baja)', consulta):
+            imp = re.search(r'importancia\s*(alta|media|baja)', consulta).group(1).capitalize()
+            filtro["importancia"] = imp
+            
+        # 4. Búsqueda por nombre 
+        else:
+            filtro["nombre"] = {"$regex": consulta, "$options": "i"}  # Búsqueda case-insensitive
+
+    # --- SECCIÓN DE EJECUCIÓN DE LA BÚSQUEDA ---
     for doc in colecciones[categoria].find(filtro):
+        # Convertir ObjectId a string
         doc["_id"] = str(doc["_id"])
 
-        # Resolución de relaciones por tipo de colección
+        # --- RESOLUCIÓN DE RELACIONES ---
+        # Para eventos: resolver lugar y personajes
         if categoria == "eventos":
             if "lugar" in doc:
                 doc["lugar"] = obtener_nombre("lugares", doc["lugar"])
             if "personajes_involucrados" in doc:
                 doc["personajes_involucrados"] = obtener_nombres("personajes", doc["personajes_involucrados"])
-
+                
+        # Para familias: resolver parejas e hijos
         elif categoria == "familias":
             if "parejas" in doc:
                 doc["parejas"] = obtener_nombres("personajes", doc["parejas"])
             if "hijos" in doc:
                 doc["hijos"] = obtener_nombres("personajes", doc["hijos"])
-
+                
+        # Para magia: resolver personajes y eventos relacionados
         elif categoria == "magia":
             if "personajes_relacionados" in doc:
                 doc["personajes_relacionados"] = obtener_nombres("personajes", doc["personajes_relacionados"])
             if "eventos_relacionados" in doc:
                 doc["eventos_relacionados"] = obtener_nombres("eventos", doc["eventos_relacionados"])
-
+                
+        # Para lugares: resolver personajes relacionados
         elif categoria == "lugares":
             if "personajes_relacionados" in doc:
                 doc["personajes_relacionados"] = obtener_nombres("personajes", doc["personajes_relacionados"])
-
+                
+        # Para otras colecciones: solo serializar
         else:
             doc = serializar_documento(doc)
 
+        # Agregar documento procesado a resultados
         resultados.append(doc)
 
+    # Retornar resultados en formato JSON
     return jsonify({"resultados": resultados})
 
 @app.route("/eliminar", methods=["POST"])
