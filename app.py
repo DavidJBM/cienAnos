@@ -17,7 +17,7 @@ app = Flask(__name__)
 # ======================
 MONGO_URI = "mongodb+srv://chinopacas:123@prueba.soxywwh.mongodb.net/?retryWrites=true&w=majority&appName=prueba"
 client = MongoClient(MONGO_URI)
-db = client["cien_anos_soledad"]  # Base de datos principal
+db = client["cien_anos_soledad"]  
 
 # Mapeo de colecciones
 colecciones = {
